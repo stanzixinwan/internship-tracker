@@ -67,8 +67,8 @@ MAX_AGE_DAYS = 14
 # different column names, either rename your header row to match this, or
 # edit this list to match your header row.
 SHEET_HEADERS = [
-    "Company", "Role", "Location", "Category",
-    "Age When Found", "Date Found", "Status", "Link",
+    "Company", "Role / Title", "Date Applied", "Status", "Job ID",
+    "Link", "OA", "Interview Stage", "Referral", "Location", "Notes",
 ]
 
 DEFAULT_STATUS = "\u5f85\u6295\u9012"  # "To apply" -- change to English if you prefer
@@ -254,8 +254,17 @@ def main():
         if p["link"] in existing_links:
             continue
         new_rows.append([
-            p["company"], p["role"], p["location"], p["category"],
-            p["age"], today, DEFAULT_STATUS, p["link"],
+            p["company"],       # Company
+            p["role"],          # Role / Title
+            today,              # Date Applied
+            DEFAULT_STATUS,     # Status
+            "",                 # Job ID (not available from the README -- fill in manually)
+            p["link"],          # Link
+            "",                 # OA
+            "",                 # Interview Stage
+            "",                 # Referral
+            p["location"],      # Location
+            p["category"],      # Notes (section the posting was matched under)
         ])
 
     skipped = len(postings) - len(new_rows)
