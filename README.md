@@ -13,6 +13,7 @@
 
 ```
 your-repo/
+├── config.py
 ├── fetch_internships.py
 ├── requirements.txt
 └── .github/
@@ -42,7 +43,7 @@ your-repo/
 
 ### 3. 在 GitHub 仓库里配置 Secrets
 
-新建一个 GitHub 仓库，把上面三个文件放进去，然后：
+新建一个 GitHub 仓库，把上面这些文件放进去，然后：
 **Settings → Secrets and variables → Actions → New repository secret**，依次添加：
 
 | Secret 名称 | 值 |
@@ -69,7 +70,7 @@ your-repo/
 
 ## 想调整筛选逻辑？
 
-打开 `fetch_internships.py` 顶部的配置区：
+打开 `config.py`：
 
 - **`KEYWORDS`**：关键词列表，决定哪些岗位算匹配，按你的方向随便加减
   （比如想收窄到纯机器人方向，可以去掉 `"ai"` `"machine learning"` 这些太宽泛的词）。
