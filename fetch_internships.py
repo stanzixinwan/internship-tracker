@@ -210,14 +210,45 @@ def get_existing_links(service, sheet_id: str, tab: str) -> set:
     return existing
 
 
-def append_rows(service, sheet_id: str, tab: str, rows: list):
+def get_sheet_gid(service, sheet_id: str, tab: str) -> int:
+    meta = service.spreadsheets().get(spreadsheetId=sheet_id).execute()
+    for s in meta["sheets"]:
+        if s["properties"]["title"] == tab:
+            return s["properties"]["sheetId"]
+    raise RuntimeError(f"Could not find a tab named {tab!r} in the spreadsheet.")
+
+
+def prepend_rows(service, sheet_id: str, tab: str, rows: list):
+    """Insert new rows directly below the header row (row 2), pushing
+    everything already there further down -- so the newest postings always
+    show up at the top of the sheet."""
     if not rows:
         return
-    service.spreadsheets().values().append(
+    gid = get_sheet_gid(service, sheet_id, tab)
+    n = len(rows)
+
+    # Row index 1 (0-based) == sheet row 2, i.e. right after the header row.
+    service.spreadsheets().batchUpdate(
         spreadsheetId=sheet_id,
-        range=f"{tab}!A:A",
+        body={
+            "requests": [{
+                "insertDimension": {
+                    "range": {
+                        "sheetId": gid,
+                        "dimension": "ROWS",
+                        "startIndex": 1,
+                        "endIndex": 1 + n,
+                    },
+                    "inheritFromBefore": False,
+                }
+            }]
+        },
+    ).execute()
+
+    service.spreadsheets().values().update(
+        spreadsheetId=sheet_id,
+        range=f"{tab}!A2",
         valueInputOption="RAW",
-        insertDataOption="INSERT_ROWS",
         body={"values": rows},
     ).execute()
 
@@ -269,7 +300,7 @@ def main():
 
     skipped = len(postings) - len(new_rows)
     print(f"{len(new_rows)} new posting(s) to add (skipped {skipped} already tracked).")
-    append_rows(service, sheet_id, tab, new_rows)
+    prepend_rows(service, sheet_id, tab, new_rows)
     print("Done.")
 
 
