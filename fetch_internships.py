@@ -49,6 +49,9 @@ SECTION_HEADERS = [
 # Keywords matched case-insensitively against "Company + Role" text.
 # This is the main dial for how broad/narrow your matches are.
 KEYWORDS = [
+    "software engineering", "software engineer", 
+    "software development",  "software development engineer",
+    "backend", "full stack", "frontend",
     "robot", "robotics", "manipulation", "autonom", "embodied",
     "machine learning", " ml ", "ml intern", "artificial intelligence",
     " ai ", "ai/ml", "deep learning", "reinforcement learning",
@@ -56,6 +59,10 @@ KEYWORDS = [
     "self-driving", "autonomous vehicle", "vla", "llm",
     "large language model", "distributed systems", "cuda", "gpu inference",
 ]
+
+# Drop roles that look PhD-only. Titles that also mention MS / Master's
+# (e.g. "Software Engineer Intern - MS/PhD") are kept.
+EXCLUDE_PHD_ONLY = True
 
 # Only keep postings at most this many days old (based on the README's "Age"
 # column: "0d", "3d", "1mo", ...). Set to None to disable age filtering.
@@ -94,6 +101,21 @@ def split_sections(content: str) -> dict:
             continue  # section not found -- README structure may have changed
         sections[name] = content[start:end]
     return sections
+
+
+def is_phd_only(role: str) -> bool:
+    """True when the title asks for a PhD and does not also mention MS/Master's."""
+    text = role.lower().replace("ph.d.", "phd").replace("ph.d", "phd")
+    if "phd" not in text and "doctorate" not in text and "doctoral" not in text:
+        return False
+    # If the posting also accepts a master's (or bachelor's), it is not PhD-only.
+    also_accepts_non_phd = (
+        "ms/phd", "ms / phd", "ms or phd", "ms and phd",
+        "phd/ms", "phd / ms", "phd or ms", "phd and ms",
+        "master", "mba", "m.s.", "msc",
+        "bachelor", "undergrad", "bs/ms", "bs / ms",
+    )
+    return not any(token in text for token in also_accepts_non_phd)
 
 
 def parse_age_to_days(age_text: str):
@@ -139,6 +161,9 @@ def extract_rows(sections: dict) -> list:
 
             combined = f"{company} {role}".lower()
             if not any(kw in combined for kw in KEYWORDS):
+                continue
+
+            if EXCLUDE_PHD_ONLY and is_phd_only(role):
                 continue
 
             age_days = parse_age_to_days(age)
