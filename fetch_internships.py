@@ -76,6 +76,7 @@ MAX_AGE_DAYS = 14
 SHEET_HEADERS = [
     "Company", "Role / Title", "Date Applied", "Status", "Job ID",
     "Link", "OA", "Interview Stage", "Referral", "Location", "Notes",
+    "Date Posted",
 ]
 
 DEFAULT_STATUS = "\u5f85\u6295\u9012"  # "To apply" -- change to English if you prefer
@@ -132,6 +133,17 @@ def parse_age_to_days(age_text: str):
     return None
 
 
+def format_date(d: datetime.date) -> str:
+    return d.strftime("%m/%d/%Y")
+
+
+def date_posted(today: datetime.date, age_days):
+    """Estimate the posting date as discovery date minus README age."""
+    if age_days is None:
+        return ""
+    return format_date(today - datetime.timedelta(days=age_days))
+
+
 def extract_rows(sections: dict) -> list:
     results = []
     for section_name, html in sections.items():
@@ -176,6 +188,7 @@ def extract_rows(sections: dict) -> list:
                 "location": location,
                 "category": section_name,
                 "age": age,
+                "age_days": age_days,
                 "link": link,
             })
     return results
@@ -203,13 +216,20 @@ def ensure_header(service, sheet_id: str, tab: str):
     result = service.spreadsheets().values().get(
         spreadsheetId=sheet_id, range=f"{tab}!A1:Z1"
     ).execute()
-    if not result.get("values"):
-        service.spreadsheets().values().update(
-            spreadsheetId=sheet_id,
-            range=f"{tab}!A1",
-            valueInputOption="RAW",
-            body={"values": [SHEET_HEADERS]},
-        ).execute()
+    existing = result.get("values", [[]])[0] if result.get("values") else []
+    if not existing:
+        header = SHEET_HEADERS
+    else:
+        missing = [h for h in SHEET_HEADERS if h not in existing]
+        if not missing:
+            return
+        header = existing + missing
+    service.spreadsheets().values().update(
+        spreadsheetId=sheet_id,
+        range=f"{tab}!A1",
+        valueInputOption="RAW",
+        body={"values": [header]},
+    ).execute()
 
 
 def get_existing_links(service, sheet_id: str, tab: str) -> set:
@@ -304,7 +324,7 @@ def main():
     ensure_header(service, sheet_id, tab)
     existing_links = get_existing_links(service, sheet_id, tab)
 
-    today = datetime.date.today().isoformat()
+    today = datetime.date.today()
     new_rows = []
     for p in postings:
         if p["link"] in existing_links:
@@ -312,7 +332,7 @@ def main():
         new_rows.append([
             p["company"],       # Company
             p["role"],          # Role / Title
-            today,              # Date Applied
+            "",                 # Date Applied (fill in when you actually apply)
             DEFAULT_STATUS,     # Status
             "",                 # Job ID (not available from the README -- fill in manually)
             p["link"],          # Link
@@ -321,6 +341,7 @@ def main():
             "",                 # Referral
             p["location"],      # Location
             p["category"],      # Notes (section the posting was matched under)
+            date_posted(today, p["age_days"]),  # Date Posted
         ])
 
     skipped = len(postings) - len(new_rows)
