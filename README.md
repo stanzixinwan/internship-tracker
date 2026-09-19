@@ -74,6 +74,9 @@ your-repo/
 - **`KEYWORDS`**：关键词列表，决定哪些岗位算匹配，按你的方向随便加减
   （比如想收窄到纯机器人方向，可以去掉 `"ai"` `"machine learning"` 这些太宽泛的词）。
 - **`EXCLUDE_PHD_ONLY`**：默认 `True`，丢掉标题里只要 PhD 的岗位；`MS/PhD` 这类仍然会保留。改成 `False` 就不过滤。
+- **`EXCLUDE_ROLE_KEYWORDS`**：标题里出现这些词就丢掉，默认排除嵌入式（`embedded`）。
+- **`EXCLUDE_COOP`**：默认 `True`，丢掉 co-op / Intern/Co-op。改成 `False` 就不过滤。
+- **`EXCLUDE_US_CITIZEN`**：默认 `True`，丢掉 README 里标了 🇺🇸（Requires U.S. Citizenship）的岗位。
 - **`MAX_AGE_DAYS`**：只保留发布在多少天以内的岗位，默认 14 天，改成 `None` 就是不限制。
 - **`SHEET_HEADERS`**：写入表格的列名，如果你的表格已经有自己的表头，把这行改成一致的顺序即可。
 - **`REPO_README_URL`**：想换成扫描 `Summer2026-Internships`、`New-Grad-Positions` 等其他

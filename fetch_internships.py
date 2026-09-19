@@ -64,11 +64,25 @@ KEYWORDS = [
 # (e.g. "Software Engineer Intern - MS/PhD") are kept.
 EXCLUDE_PHD_ONLY = True
 
+# Drop roles whose title contains any of these (case-insensitive).
+# "embedded" covers embedded system / software / engineer / firmware.
+EXCLUDE_ROLE_KEYWORDS = [
+    "embedded",
+]
+
+# Drop co-op / coop titles, including "Intern/Co-op". Matched as a whole
+# term on the role only, so company names like PricewaterhouseCoopers stay.
+EXCLUDE_COOP = True
+
+# Drop postings tagged 🇺🇸 in the README ("Requires U.S. Citizenship").
+# Continuation rows (↳) inherit the flag from the company row above.
+EXCLUDE_US_CITIZEN = True
+
 # Only keep postings at most this many days old (based on the README's "Age"
 # column: "0d", "3d", "1mo", ...). Set to None to disable age filtering.
 # Keep this reasonably small once the sheet is populated -- it just limits
 # how far back a fresh run looks, not how often the script runs.
-MAX_AGE_DAYS = 14
+MAX_AGE_DAYS = 2
 
 # Column layout written to the sheet. If you already have a header row with
 # different column names, either rename your header row to match this, or
@@ -80,6 +94,10 @@ SHEET_HEADERS = [
 ]
 
 DEFAULT_STATUS = "\u5f85\u6295\u9012"  # "To apply" -- change to English if you prefer
+
+FIRE_EMOJI = "\U0001F525"            # 🔥 FAANG+
+US_CITIZEN_EMOJI = "\U0001F1FA\U0001F1F8"  # 🇺🇸 Requires U.S. Citizenship
+SAME_COMPANY_MARK = "\u21b3"         # ↳
 
 # ---------------------------------------------------------------------------
 # 2. FETCH + PARSE
@@ -119,6 +137,22 @@ def is_phd_only(role: str) -> bool:
     return not any(token in text for token in also_accepts_non_phd)
 
 
+def is_coop_role(role: str) -> bool:
+    """True when the title is a co-op (including Co-op), not 'cooperative'."""
+    collapsed = role.lower().replace("co-op", "coop").replace("co op", "coop")
+    tokens = "".join(ch if ch.isalnum() else " " for ch in collapsed).split()
+    return "coop" in tokens
+
+
+def is_excluded_role(role: str) -> bool:
+    text = role.lower()
+    if any(kw in text for kw in EXCLUDE_ROLE_KEYWORDS):
+        return True
+    if EXCLUDE_COOP and is_coop_role(role):
+        return True
+    return False
+
+
 def parse_age_to_days(age_text: str):
     age_text = age_text.strip().lower()
     try:
@@ -149,6 +183,7 @@ def extract_rows(sections: dict) -> list:
     for section_name, html in sections.items():
         soup = BeautifulSoup(html, "html.parser")
         last_company = None
+        last_requires_us_citizen = False
         for row in soup.find_all("tr"):
             cells = row.find_all("td")
             if len(cells) < 5:
@@ -156,11 +191,17 @@ def extract_rows(sections: dict) -> list:
             company_cell, role_cell, loc_cell, app_cell, age_cell = cells[:5]
 
             company_text = company_cell.get_text(strip=True)
-            if company_text in ("", "\u21b3"):  # "\u21b3" = "↳" (same company as row above)
+            row_text = row.get_text(" ", strip=True)
+            row_requires_us = US_CITIZEN_EMOJI in row_text
+
+            if company_text in ("", SAME_COMPANY_MARK):
                 company = last_company
+                requires_us_citizen = last_requires_us_citizen or row_requires_us
             else:
-                company = company_text.replace("\U0001F525", "").strip()  # strip fire emoji
+                company = company_text.replace(FIRE_EMOJI, "").replace(US_CITIZEN_EMOJI, "").strip()
                 last_company = company
+                requires_us_citizen = row_requires_us
+                last_requires_us_citizen = row_requires_us
 
             role = role_cell.get_text(strip=True)
             location = loc_cell.get_text(strip=True)
@@ -176,6 +217,12 @@ def extract_rows(sections: dict) -> list:
                 continue
 
             if EXCLUDE_PHD_ONLY and is_phd_only(role):
+                continue
+
+            if is_excluded_role(role):
+                continue
+
+            if EXCLUDE_US_CITIZEN and requires_us_citizen:
                 continue
 
             age_days = parse_age_to_days(age)
