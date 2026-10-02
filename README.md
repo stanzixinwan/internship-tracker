@@ -1,15 +1,15 @@
 # Internship Tracker（每日自动扫描 + 写入 Google Sheet）
 
 这套脚本每天自动检查 [SimplifyJobs/Summer2027-Internships](https://github.com/SimplifyJobs/Summer2027-Internships)，
-按关键词筛选出匹配的岗位，去重后追加写入你的 Google Sheet。全程跑在 GitHub Actions 里，不需要你电脑开机。
+按关键词筛选出匹配的岗位，去重后追加写入 Google Sheet。全程跑在 GitHub Actions 。
 
-**这套东西只负责“发现 + 记录”，不会帮你注册账号、过验证码或提交申请** —— 那几步始终需要你本人操作。
+**这套东西只负责“发现 + 记录”，不会帮你注册账号、过验证码或提交申请**
 
 ---
 
 ## 目录结构
 
-把这几个文件放进一个新的 GitHub 仓库（结构必须保持一致，`.github/workflows/` 必须在仓库根目录下）：
+`.github/workflows/` 必须在仓库根目录下：
 
 ```
 your-repo/
@@ -78,6 +78,7 @@ your-repo/
 - **`EXCLUDE_ROLE_KEYWORDS`**：标题里出现这些词就丢掉，默认排除嵌入式（`embedded`）。
 - **`EXCLUDE_COOP`**：默认 `True`，丢掉 co-op / Intern/Co-op。改成 `False` 就不过滤。
 - **`EXCLUDE_US_CITIZEN`**：默认 `True`，丢掉 README 里标了 🇺🇸（Requires U.S. Citizenship）的岗位。
+- **`EXCLUDE_COMPANIES`**：按公司名整词排除。
 - **`MAX_AGE_DAYS`**：只保留发布在多少天以内的岗位，默认 14 天，改成 `None` 就是不限制。
 - **`SHEET_HEADERS`**：写入表格的列名，如果你的表格已经有自己的表头，把这行改成一致的顺序即可。
 - **`REPO_README_URL`**：想换成扫描 `Summer2026-Internships`、`New-Grad-Positions` 等其他

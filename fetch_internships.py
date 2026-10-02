@@ -32,6 +32,7 @@ from config import (
     EXCLUDE_ROLE_KEYWORDS,
     EXCLUDE_COOP,
     EXCLUDE_US_CITIZEN,
+    EXCLUDE_COMPANIES,
     MAX_AGE_DAYS,
     SHEET_HEADERS,
     DEFAULT_STATUS,
@@ -83,6 +84,12 @@ def is_coop_role(role: str) -> bool:
     collapsed = role.lower().replace("co-op", "coop").replace("co op", "coop")
     tokens = "".join(ch if ch.isalnum() else " " for ch in collapsed).split()
     return "coop" in tokens
+
+
+def is_excluded_company(company: str) -> bool:
+    tokens = "".join(ch if ch.isalnum() else " " for ch in company.lower()).split()
+    blocked = {name.lower() for name in EXCLUDE_COMPANIES}
+    return any(token in blocked for token in tokens)
 
 
 def is_excluded_role(role: str) -> bool:
@@ -164,6 +171,9 @@ def extract_rows(sections: dict) -> list:
                 continue
 
             if EXCLUDE_US_CITIZEN and requires_us_citizen:
+                continue
+
+            if is_excluded_company(company):
                 continue
 
             age_days = parse_age_to_days(age)

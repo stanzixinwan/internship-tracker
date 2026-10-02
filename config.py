@@ -53,11 +53,20 @@ EXCLUDE_COOP = True
 # Continuation rows (↳) inherit the flag from the company row above.
 EXCLUDE_US_CITIZEN = True
 
+# Drop every posting from these companies (matched as a whole word on the
+# company name). RTX and AMD require U.S. citizenship even when the README
+# row is not tagged 🇺🇸.
+EXCLUDE_COMPANIES = [
+    "RTX",
+    "AMD",
+    "Northrop Grumman",
+]
+
 # Only keep postings at most this many days old (based on the README's "Age"
 # column: "0d", "3d", "1mo", ...). Set to None to disable age filtering.
 # Keep this reasonably small once the sheet is populated -- it just limits
 # how far back a fresh run looks, not how often the script runs.
-MAX_AGE_DAYS = 13
+MAX_AGE_DAYS = 2
 
 # Column layout written to the sheet. If you already have a header row with
 # different column names, either rename your header row to match this, or
