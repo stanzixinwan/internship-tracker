@@ -79,6 +79,7 @@ your-repo/
 - **`EXCLUDE_COOP`**：默认 `True`，丢掉 co-op / Intern/Co-op。改成 `False` 就不过滤。
 - **`EXCLUDE_US_CITIZEN`**：默认 `True`，丢掉 README 里标了 🇺🇸（Requires U.S. Citizenship）的岗位。
 - **`EXCLUDE_COMPANIES`**：按公司名整词排除。
+- **`EXCLUDE_LOCATIONS`**：按地点排除，默认丢掉只在 UK 或 Canada 的岗位。同时写了美国地点的会保留。
 - **`MAX_AGE_DAYS`**：只保留发布在多少天以内的岗位，默认 14 天，改成 `None` 就是不限制。
 - **`SHEET_HEADERS`**：写入表格的列名，如果你的表格已经有自己的表头，把这行改成一致的顺序即可。
 - **`REPO_README_URL`**：想换成扫描 `Summer2026-Internships`、`New-Grad-Positions` 等其他

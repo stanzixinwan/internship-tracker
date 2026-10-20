@@ -60,6 +60,15 @@ EXCLUDE_COMPANIES = [
     "RTX",
     "AMD",
     "Northrop Grumman",
+    "ITT",
+]
+
+# Drop postings located in these places. Matched as a whole word on the
+# location ("London, UK", "Toronto, ON, Canada", "Remote in UK").
+# A posting that also lists a US location is kept.
+EXCLUDE_LOCATIONS = [
+    "UK",
+    "Canada",
 ]
 
 # Only keep postings at most this many days old (based on the README's "Age"

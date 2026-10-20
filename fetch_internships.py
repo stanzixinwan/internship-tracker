@@ -18,6 +18,7 @@ Run locally for testing:
 """
 
 import os
+import re
 import sys
 import json
 import datetime
@@ -33,6 +34,7 @@ from config import (
     EXCLUDE_COOP,
     EXCLUDE_US_CITIZEN,
     EXCLUDE_COMPANIES,
+    EXCLUDE_LOCATIONS,
     MAX_AGE_DAYS,
     SHEET_HEADERS,
     DEFAULT_STATUS,
@@ -90,6 +92,40 @@ def is_excluded_company(company: str) -> bool:
     tokens = "".join(ch if ch.isalnum() else " " for ch in company.lower()).split()
     blocked = {name.lower() for name in EXCLUDE_COMPANIES}
     return any(token in blocked for token in tokens)
+
+
+# State abbrev must follow a comma, so "Remote in UK" is not read as Indiana
+# and ", Canada" is not read as California.
+_US_STATE_RE = re.compile(
+    r",\s*(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|"
+    r"MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|"
+    r"TX|UT|VT|VA|WA|WV|WI|WY|DC)\b",
+    re.IGNORECASE,
+)
+_US_CITY_TOKENS = {"sf", "nyc", "la"}
+
+
+def is_excluded_location(location: str) -> bool:
+    if not EXCLUDE_LOCATIONS:
+        return False
+    text = location.lower().replace("u.k.", "uk").replace("u.k", "uk")
+    tokens = set(re.findall(r"[a-z0-9]+", text))
+    wanted = {name.lower() for name in EXCLUDE_LOCATIONS}
+
+    is_target = False
+    if "uk" in wanted and (
+        "uk" in tokens or "united kingdom" in text or "great britain" in text
+    ):
+        is_target = True
+    if "canada" in wanted and ("canada" in tokens or "canadian" in tokens):
+        is_target = True
+    if not is_target:
+        return False
+    if _US_STATE_RE.search(text) or (tokens & _US_CITY_TOKENS):
+        return False
+    if "usa" in tokens or "united states" in text:
+        return False
+    return True
 
 
 def is_excluded_role(role: str) -> bool:
@@ -174,6 +210,9 @@ def extract_rows(sections: dict) -> list:
                 continue
 
             if is_excluded_company(company):
+                continue
+
+            if is_excluded_location(location):
                 continue
 
             age_days = parse_age_to_days(age)
