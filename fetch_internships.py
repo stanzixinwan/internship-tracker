@@ -269,27 +269,72 @@ def ensure_header(service, sheet_id: str, tab: str):
     ).execute()
 
 
-def get_existing_links(service, sheet_id: str, tab: str) -> set:
+def norm_text(value: str) -> str:
+    return " ".join((value or "").split()).casefold()
+
+
+def norm_link(url: str) -> str:
+    return (url or "").strip().rstrip("/")
+
+
+def posting_key(company: str, role: str, location: str) -> tuple:
+    return (norm_text(company), norm_text(role), norm_text(location))
+
+
+def _column_index(header: list, name: str) -> int:
+    if name in header:
+        return header.index(name)
+    if name in SHEET_HEADERS:
+        return SHEET_HEADERS.index(name)
+    return -1
+
+
+def _cell(row: list, index: int) -> str:
+    if index < 0 or len(row) <= index:
+        return ""
+    return row[index]
+
+
+def get_existing_postings(service, sheet_id: str, tab: str) -> tuple:
+    """Links plus company/role/location already on the sheet.
+
+    The same posting stays inside MAX_AGE_DAYS across daily runs, and its
+    apply link is not always identical the next day. Match both.
+    """
     try:
         result = service.spreadsheets().values().get(
-            spreadsheetId=sheet_id, range=f"{tab}!A:Z"
+            spreadsheetId=sheet_id,
+            range=f"{tab}!A:Z",
+            valueRenderOption="UNFORMATTED_VALUE",
         ).execute()
     except Exception as e:
         print(f"Warning: could not read existing sheet data ({e}); assuming empty.")
-        return set()
+        return set(), set()
 
     values = result.get("values", [])
     if not values:
-        return set()
+        return set(), set()
 
     header = values[0]
-    link_col = header.index("Link") if "Link" in header else len(header) - 1
+    link_col = _column_index(header, "Link")
+    company_col = _column_index(header, "Company")
+    role_col = _column_index(header, "Role / Title")
+    loc_col = _column_index(header, "Location")
 
-    existing = set()
+    links = set()
+    keys = set()
     for row in values[1:]:
-        if len(row) > link_col:
-            existing.add(row[link_col])
-    return existing
+        link = norm_link(_cell(row, link_col))
+        if link:
+            links.add(link)
+        key = posting_key(
+            _cell(row, company_col),
+            _cell(row, role_col),
+            _cell(row, loc_col),
+        )
+        if any(key):
+            keys.add(key)
+    return links, keys
 
 
 def get_sheet_gid(service, sheet_id: str, tab: str) -> int:
@@ -359,13 +404,18 @@ def main():
 
     service = get_sheets_service()
     ensure_header(service, sheet_id, tab)
-    existing_links = get_existing_links(service, sheet_id, tab)
+    seen_links, seen_keys = get_existing_postings(service, sheet_id, tab)
 
     today = datetime.date.today()
     new_rows = []
     for p in postings:
-        if p["link"] in existing_links:
+        link = norm_link(p["link"])
+        key = posting_key(p["company"], p["role"], p["location"])
+        if (link and link in seen_links) or key in seen_keys:
             continue
+        if link:
+            seen_links.add(link)
+        seen_keys.add(key)
         new_rows.append([
             p["company"],       # Company
             p["role"],          # Role / Title
